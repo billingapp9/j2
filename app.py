@@ -79,26 +79,41 @@ if menu == "Dashboard":
 
 elif menu == "Employees":
 
-    st.header("👥 Add Employees")
+    st.header("👥 Employee Management")
 
     with st.form("Add Employee"):
         name = st.text_input("Employee Name")
-        role = st.selectbox("Role", ["Delivery", "Sales", "Warehouse", "Manager"])
-        dept = st.text_input("Department")
+        role = st.selectbox("Role", [
+            "Salesman",
+            "Computer Operator",
+            "Helper",
+            "Driver"
+        ])
         salary = st.number_input("Monthly Salary", min_value=0)
+        status = st.selectbox("Status", ["Active", "Inactive"])
 
         submit = st.form_submit_button("Add Employee")
 
         if submit and name != "":
-            new_row = pd.DataFrame([[name, role, dept, salary]],
-                                   columns=["Name", "Role", "Department", "Salary"])
+            new_row = pd.DataFrame([[name, role, salary, status]],
+                                   columns=["Name", "Role", "Salary", "Status"])
+
             st.session_state.employees = pd.concat(
                 [st.session_state.employees, new_row], ignore_index=True
             )
+
             st.success("Employee Added Successfully")
 
     st.subheader("Employee List")
-    st.dataframe(st.session_state.employees, use_container_width=True)
+
+    if not st.session_state.employees.empty:
+        edited_df = st.data_editor(
+            st.session_state.employees,
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        st.session_state.employees = edited_df
 
 # =====================================================
 # 3️⃣ ATTENDANCE
@@ -223,3 +238,4 @@ elif menu == "Payroll":
             st.write("Advance Deduction: ₹", emp_adv)
             st.write("Final Salary: ₹", round(final_salary, 2))
             st.markdown("---")
+
