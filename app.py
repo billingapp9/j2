@@ -81,6 +81,8 @@ elif menu == "Employees":
 
     st.header("👥 Employee Management")
 
+    # ---------------- ADD EMPLOYEE ----------------
+
     with st.form("Add Employee"):
         name = st.text_input("Employee Name")
         role = st.selectbox("Role", [
@@ -99,21 +101,40 @@ elif menu == "Employees":
                                    columns=["Name", "Role", "Salary", "Status"])
 
             st.session_state.employees = pd.concat(
-                [st.session_state.employees, new_row], ignore_index=True
+                [st.session_state.employees, new_row],
+                ignore_index=True
             )
 
             st.success("Employee Added Successfully")
 
-    st.subheader("Employee List")
+    st.markdown("---")
+
+    # ---------------- EDIT EMPLOYEE ----------------
+
+    st.subheader("Edit Employees")
 
     if not st.session_state.employees.empty:
+
+        # Create a copy for editing
+        if "temp_edit" not in st.session_state:
+            st.session_state.temp_edit = st.session_state.employees.copy()
+
         edited_df = st.data_editor(
-            st.session_state.employees,
+            st.session_state.temp_edit,
             use_container_width=True,
             num_rows="dynamic"
         )
 
-        st.session_state.employees = edited_df
+        col1, col2 = st.columns(2)
+
+        if col1.button("✅ Update Changes"):
+            st.session_state.employees = edited_df
+            st.session_state.temp_edit = edited_df.copy()
+            st.success("Employee Data Updated Successfully")
+
+        if col2.button("❌ Cancel Changes"):
+            st.session_state.temp_edit = st.session_state.employees.copy()
+            st.warning("Changes Cancelled")
 
 # =====================================================
 # 3️⃣ ATTENDANCE
@@ -238,4 +259,5 @@ elif menu == "Payroll":
             st.write("Advance Deduction: ₹", emp_adv)
             st.write("Final Salary: ₹", round(final_salary, 2))
             st.markdown("---")
+
 
