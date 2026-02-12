@@ -1,263 +1,169 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, date
 
-st.set_page_config(page_title="Attendance Demo", layout="wide")
+st.set_page_config(page_title="Distributor ERP", layout="wide")
 
-st.title("🚀 Distributor Attendance & Payroll Demo System")
+# ---- HEADER ----
+st.title("🏢 Distributor ERP System")
+st.caption("Business Management Dashboard")
 
-# ------------------ SESSION STORAGE ------------------
-
-if "employees" not in st.session_state:
-    st.session_state.employees = pd.DataFrame(columns=["Name", "Role", "Department", "Salary"])
-
-if "attendance" not in st.session_state:
-    st.session_state.attendance = pd.DataFrame(columns=[
-        "Name", "Date", "In Time", "Out Time",
-        "Working Hours", "Status", "Overtime"
-    ])
-
-if "advances" not in st.session_state:
-    st.session_state.advances = pd.DataFrame(columns=["Name", "Amount", "Date"])
-
-# ------------------ RESET BUTTON ------------------
-
-if st.sidebar.button("🔄 Reset Demo"):
-    st.session_state.employees = pd.DataFrame(columns=["Name", "Role", "Department", "Salary"])
-    st.session_state.attendance = pd.DataFrame(columns=[
-        "Name", "Date", "In Time", "Out Time",
-        "Working Hours", "Status", "Overtime"
-    ])
-    st.session_state.advances = pd.DataFrame(columns=["Name", "Amount", "Date"])
-    st.sidebar.success("Demo Reset Done")
-
-# ------------------ SIDEBAR MENU ------------------
-
-menu = st.sidebar.radio("Navigation", [
-    "Dashboard",
-    "Employees",
-    "Attendance",
-    "Advances",
-    "Payroll"
-])
-
-# =====================================================
-# 1️⃣ DASHBOARD
-# =====================================================
-
-if menu == "Dashboard":
-
-    st.header("📊 Live Dashboard")
-
-    total_emp = len(st.session_state.employees)
-    today = str(date.today())
-
-    today_att = st.session_state.attendance[
-        st.session_state.attendance["Date"] == today
+# ---- SIDEBAR MENU ----
+menu = st.sidebar.radio(
+    "📂 Navigation",
+    [
+        "Dashboard",
+        "Item Master",
+        "Customer Master",
+        "Supplier Master",
+        "Purchase",
+        "Sales",
+        "Collections",
+        "Stock Report",
+        "Outstanding Report",
+        "GST Report"
     ]
+)
 
-    present = len(today_att[today_att["Status"] == "Present"])
-    half = len(today_att[today_att["Status"] == "Half Day"])
-    absent = total_emp - present - half
+# ---------------- DASHBOARD ----------------
+if menu == "Dashboard":
+    st.subheader("📊 Dashboard Overview")
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Employees", total_emp)
-    col2.metric("Present Today", present)
-    col3.metric("Half Day", half)
-    col4.metric("Absent Today", absent)
 
-    if total_emp > 0:
-        chart_data = pd.DataFrame({
-            "Count": [present, half, absent]
-        }, index=["Present", "Half Day", "Absent"])
+    col1.metric("Today Sales", "₹ 25,000")
+    col2.metric("Monthly Sales", "₹ 4,50,000")
+    col3.metric("Outstanding", "₹ 1,20,000")
+    col4.metric("Stock Value", "₹ 8,75,000")
 
-        st.bar_chart(chart_data)
+    st.divider()
 
-# =====================================================
-# 2️⃣ EMPLOYEES
-# =====================================================
+    col5, col6 = st.columns(2)
 
-elif menu == "Employees":
+    with col5:
+        st.subheader("Top Customers")
+        st.write("1. Sai Traders")
+        st.write("2. Lakshmi Stores")
+        st.write("3. Ramesh Kirana")
 
-    st.header("👥 Employee Management")
-
-    # ---------------- ADD EMPLOYEE ----------------
-
-    with st.form("Add Employee"):
-        name = st.text_input("Employee Name")
-        role = st.selectbox("Role", [
-            "Salesman",
-            "Computer Operator",
-            "Helper",
-            "Driver"
-        ])
-        salary = st.number_input("Monthly Salary", min_value=0)
-        status = st.selectbox("Status", ["Active", "Inactive"])
-
-        submit = st.form_submit_button("Add Employee")
-
-        if submit and name != "":
-            new_row = pd.DataFrame([[name, role, salary, status]],
-                                   columns=["Name", "Role", "Salary", "Status"])
-
-            st.session_state.employees = pd.concat(
-                [st.session_state.employees, new_row],
-                ignore_index=True
-            )
-
-            st.success("Employee Added Successfully")
-
-    st.markdown("---")
-
-    # ---------------- EDIT EMPLOYEE ----------------
-
-    st.subheader("Edit Employees")
-
-    if not st.session_state.employees.empty:
-
-        # Create a copy for editing
-        if "temp_edit" not in st.session_state:
-            st.session_state.temp_edit = st.session_state.employees.copy()
-
-        edited_df = st.data_editor(
-            st.session_state.temp_edit,
-            use_container_width=True,
-            num_rows="dynamic"
-        )
-
-        col1, col2 = st.columns(2)
-
-        if col1.button("✅ Update Changes"):
-            st.session_state.employees = edited_df
-            st.session_state.temp_edit = edited_df.copy()
-            st.success("Employee Data Updated Successfully")
-
-        if col2.button("❌ Cancel Changes"):
-            st.session_state.temp_edit = st.session_state.employees.copy()
-            st.warning("Changes Cancelled")
-
-# =====================================================
-# 3️⃣ ATTENDANCE
-# =====================================================
-
-elif menu == "Attendance":
-
-    st.header("🕒 Mark Attendance")
-
-    if st.session_state.employees.empty:
-        st.warning("Please add employees first.")
-    else:
-        emp_list = st.session_state.employees["Name"].tolist()
-        selected = st.selectbox("Select Employee", emp_list)
-
-        col1, col2 = st.columns(2)
-        in_time = col1.time_input("In Time")
-        out_time = col2.time_input("Out Time")
-
-        if st.button("Mark Attendance"):
-
-            in_dt = datetime.combine(date.today(), in_time)
-            out_dt = datetime.combine(date.today(), out_time)
-
-            hours = (out_dt - in_dt).total_seconds() / 3600
-
-            if hours >= 8:
-                status = "Present"
-            elif hours >= 4:
-                status = "Half Day"
-            else:
-                status = "Absent"
-
-            overtime = max(0, hours - 8)
-
-            new_row = pd.DataFrame([[
-                selected,
-                str(date.today()),
-                str(in_time),
-                str(out_time),
-                round(hours, 2),
-                status,
-                round(overtime, 2)
-            ]], columns=[
-                "Name", "Date", "In Time", "Out Time",
-                "Working Hours", "Status", "Overtime"
-            ])
-
-            st.session_state.attendance = pd.concat(
-                [st.session_state.attendance, new_row], ignore_index=True
-            )
-
-            st.success(f"Attendance Marked: {status}")
-
-    st.subheader("Attendance Records")
-    st.dataframe(st.session_state.attendance, use_container_width=True)
-
-# =====================================================
-# 4️⃣ ADVANCES
-# =====================================================
-
-elif menu == "Advances":
-
-    st.header("💵 Give Advance")
-
-    if st.session_state.employees.empty:
-        st.warning("Add employees first.")
-    else:
-        emp_list = st.session_state.employees["Name"].tolist()
-        selected = st.selectbox("Select Employee", emp_list)
-        amount = st.number_input("Advance Amount", min_value=0)
-
-        if st.button("Give Advance"):
-            new_row = pd.DataFrame([[selected, amount, str(date.today())]],
-                                   columns=["Name", "Amount", "Date"])
-            st.session_state.advances = pd.concat(
-                [st.session_state.advances, new_row], ignore_index=True)
-            st.success("Advance Recorded")
-
-    st.subheader("Advance Records")
-    st.dataframe(st.session_state.advances, use_container_width=True)
-
-# =====================================================
-# 5️⃣ PAYROLL
-# =====================================================
-
-elif menu == "Payroll":
-
-    st.header("💰 Payroll Calculation")
-
-    if st.session_state.employees.empty:
-        st.warning("Add employees first.")
-    else:
-        for _, emp in st.session_state.employees.iterrows():
-
-            name = emp["Name"]
-            salary = emp["Salary"]
-
-            emp_att = st.session_state.attendance[
-                st.session_state.attendance["Name"] == name
-            ]
-
-            present_days = len(emp_att[emp_att["Status"] == "Present"])
-            half_days = len(emp_att[emp_att["Status"] == "Half Day"])
-
-            earned_days = present_days + (half_days * 0.5)
-
-            per_day_salary = salary / 30 if salary else 0
-            earned_salary = earned_days * per_day_salary
-
-            emp_adv = st.session_state.advances[
-                st.session_state.advances["Name"] == name
-            ]["Amount"].sum()
-
-            final_salary = earned_salary - emp_adv
-
-            st.subheader(f"Employee: {name}")
-            st.write("Present Days:", present_days)
-            st.write("Half Days:", half_days)
-            st.write("Earned Days:", earned_days)
-            st.write("Earned Salary: ₹", round(earned_salary, 2))
-            st.write("Advance Deduction: ₹", emp_adv)
-            st.write("Final Salary: ₹", round(final_salary, 2))
-            st.markdown("---")
+    with col6:
+        st.subheader("Low Stock Alerts")
+        st.warning("🔴 Parle-G 100g - Low Stock")
+        st.warning("🔴 Sunflower Oil 1L - Low Stock")
 
 
+# ---------------- ITEM MASTER ----------------
+elif menu == "Item Master":
+    st.subheader("📦 Item Master")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.text_input("Item Code")
+    col2.text_input("Item Name")
+    col3.text_input("Category")
+
+    col4, col5, col6 = st.columns(3)
+
+    col4.selectbox("Unit", ["Nos", "Kg", "Litre", "Box"])
+    col5.number_input("Purchase Price")
+    col6.number_input("Selling Price")
+
+    col7, col8, col9 = st.columns(3)
+
+    col7.number_input("MRP")
+    col8.number_input("GST %")
+    col9.number_input("Minimum Stock Level")
+
+    st.toggle("Active", value=True)
+
+    st.button("💾 Save Item")
+
+
+# ---------------- CUSTOMER MASTER ----------------
+elif menu == "Customer Master":
+    st.subheader("🏪 Customer Master")
+
+    col1, col2 = st.columns(2)
+    col1.text_input("Customer Name")
+    col2.text_input("Outlet Name")
+
+    col3, col4 = st.columns(2)
+    col3.text_input("Mobile Number")
+    col4.text_input("Route")
+
+    col5, col6 = st.columns(2)
+    col5.number_input("Credit Limit")
+    col6.number_input("Credit Days")
+
+    st.toggle("Active", value=True)
+
+    st.button("💾 Save Customer")
+
+
+# ---------------- SALES ----------------
+elif menu == "Sales":
+    st.subheader("🧾 Sales Invoice")
+
+    col1, col2, col3 = st.columns(3)
+    col1.text_input("Invoice Number")
+    col2.date_input("Invoice Date")
+    col3.selectbox("Customer", ["Sai Traders", "Lakshmi Stores"])
+
+    st.divider()
+
+    st.markdown("### Add Items")
+
+    col4, col5, col6, col7 = st.columns(4)
+    col4.selectbox("Item", ["Parle-G", "Oil 1L"])
+    col5.number_input("Quantity")
+    col6.number_input("Rate")
+    col7.number_input("Discount")
+
+    st.button("➕ Add Item")
+
+    st.divider()
+
+    col8, col9, col10 = st.columns(3)
+    col8.number_input("Tax Amount")
+    col9.number_input("Total Amount")
+    col10.selectbox("Payment Mode", ["Cash", "Credit", "UPI", "Bank"])
+
+    st.button("🧾 Save Invoice")
+
+
+# ---------------- STOCK REPORT ----------------
+elif menu == "Stock Report":
+    st.subheader("📦 Stock Report")
+
+    st.dataframe({
+        "Item": ["Parle-G", "Oil 1L"],
+        "Opening": [100, 50],
+        "Purchase": [200, 100],
+        "Sales": [150, 60],
+        "Damage": [5, 2],
+        "Closing": [145, 88]
+    })
+
+
+# ---------------- OUTSTANDING REPORT ----------------
+elif menu == "Outstanding Report":
+    st.subheader("💳 Outstanding Report")
+
+    st.dataframe({
+        "Customer": ["Sai Traders", "Lakshmi Stores"],
+        "Opening": [10000, 5000],
+        "Sales": [25000, 12000],
+        "Collections": [20000, 8000],
+        "Outstanding": [15000, 9000]
+    })
+
+
+# ---------------- GST REPORT ----------------
+elif menu == "GST Report":
+    st.subheader("🧾 GST Summary")
+
+    st.dataframe({
+        "Tax Slab": ["5%", "12%", "18%"],
+        "Taxable Amount": [50000, 80000, 120000],
+        "Output GST": [2500, 9600, 21600],
+        "Input GST": [2000, 7000, 18000],
+        "Net GST Payable": [500, 2600, 3600]
+    })
